@@ -1,37 +1,41 @@
 <img src="https://i.imgur.com/cD5R8OG.png" width="600px;display:inline-block;margin:auto">
 
-# Mongoose - Referencing Related Data
+# Mongoose<br>Embedding Related Data
 
 ## Learning Objectives
 
 | Students Will Be Able To: |
 |---|
-| CRUD Data External to the Application |
-| Explain the Difference Between 1:M & M:M Relationships |
-| Use Referencing to Implement 1:M & M:M Data Relationships |
-| "Populate" Referenced Documents |
+| Define Schemas for Embedding Subdocuments |
+| Embed a Subdocument in its Related Document |
 
 ## Road Map
 
 1. Setup
 2. Review the Starter Code
-3. Create a CRUD Helper Module
-4. Compute the _Average Rating_ of the Reviews
-5. The `mongoose-movies` Data Model
-6. Referencing _Performers_ in the _Movie_ Model
-7. Associating Movies and Performers
+3. The `Movie --< Review` Relationship
+4. Subdocuments
+5. Define a Schema for Review Subdocuments
+6. Creating Reviews
+7. Displaying Reviews
 8. Essential Questions
+9. Further Study
+	- Retrieve a Subdocument from a Mongoose Array
+	- Remove a Subdocument from a Mongoose Array
+	- Query for a Document that Contains a Certain Subdocument
 
 ## 1. Setup
 
-1. Move into our existing `mongoose-movies` project:
+The starter code for this lesson has been updated from where we left off last lesson, so be sure to follow the following to sync your code...
+
+1. Move into the `mongoose-movies` project we started in the Intro to Mongoose lesson:
     ```
     cd ~/code/mongoose-movies
     ```
-2. Sync your code with the starter code for this lesson (mandatory):
+2. 👉 Sync your code with the starter code for this lesson (mandatory):
 
     ```
-    git reset --hard origin/sync-11-referencing-starter
+    git reset --hard origin/sync-7-embedding-starter
     ```
 3. Open the project's folder in VS Code:
     ```
@@ -49,146 +53,182 @@
 
 ## 2. Review the Starter Code
 
-The starter code has a few updates from the _Mongoose - Embedding Related Data_ lesson's final code:
-	
-- As you will learn in this lesson, a many-to-many relationship between two data resources such as _movies_ and _performers_, requires that those resources already exist.  Therefore, the functionality to create _performers_ has been implemented to save time. However, rest assured that there is nothing in this code that has not been previously taught - let's checkout the model, router, controller & view.
+As you can see, a bit of styling has been added since the previous lesson.
 
-  > 👀 Practice implementing the code for Performers was an optional exercise previously assigned.
+There's no more "Home" page - the root route defined in **routes/index.js** is redirecting to `/movies` (movies index functionality).
 
-- Be sure to check out the date "fix" required in the `create` action.
+All `res.render()` calls are passing in a `title` property for the page title and to dynamically add an `active` class to the currently active link in the nav bar.
 
-- Also, check out how the performers `newPerformer` controller function to see how we can sort documents.
+Like we did in the express-todos app, **show** functionality has been added using a **show** route definition that maps to a `show` controller action for viewing a single movie:
 
-- The cast-related code that treated `cast` as an array of strings has been removed from templates.
+- **views/movies/index.ejs** shows a "DETAILS" link that will send a request to the proper `show` route: `GET /movies/:id`.
 
-### 👉 You Do - Create a Few Performers <small>(1 min)</small>
+- EJS tags write the movie's `_id` into the `href` attribute.
 
-Feel free to use these from Star Wars and Caddyshack:
+- The `moviesCtrl.show` action is using the `Movie.findById` method and `req.params.id`.
 
-```
-Mark Hamill  9/25/1951
-Carrie Fisher  10/21/1956
-Harrison Ford  7/13/1942
-Chevy Chase  10/8/1943
-Bill Murray  9/21/1950
-```
+## 3. The `Movie --< Review` Relationship
 
-## 3. Create a CRUD Helper Module
+**`Movie --< Review`**
 
-Currently, the `cast` property on the `Movie` model holds an array of strings representing the names of the performers.
+- _A Movie has many Reviews_
+- _A Review belongs to a Movie_
 
-During this lesson, we will be refactoring the array to contain/reference the performer documents' `ObjectId` instead.
+It may be helpful to think of one-to-many relationships as a **parent**/**child** relationship.
 
-An error will occur if the schema specifies a type of `ObjectId` and Mongoose receives a string instead, so let's clear out any strings that might be in the movie documents.
+### Embed or Reference Reviews?
 
-### CRUD Data Externally to the Application
+If `mongoose-movies` was using a SQL Database there would have to be both a `Movie` and a `Review` model used to perform CRUD data operations in a "movies" and "reviews" table.
 
-At times you might need to CRUD data "outside" of the application.
+However, when implementing related data using MongoDB/Mongoose, we usually have a choice between **embedding** and **referencing**...
 
-Well, that time is now because we need to "reset" all of the movie documents' `cast` property to an empty array.
+#### Referencing Reviews
 
-To do this, we're going to create a **crud-helper.js** module and load it within a Node REPL...
+**Referencing** allows us to "link" related documents by storing one of the document's `ObjectId` in the other document.
 
-### Create **crud-helper.js**
-
-Although **crud-helper.js** will not run as part of the app, it needs to be able to connect to the database and access the models.
-
-Creating it in the project's root folder works well:
-
-```
-touch crud-helper.js
-```
-
-Copy/paste the following code with comments:
+Here's what using **referencing** to relate a movie and its reviews might look like:
 
 ```js
-// crud-helper.js
-
-// Used to perform CRUD external to the application
-
-// To use (don't type the $'s):
-//   1. Open a Node REPL in Terminal:
-//         $ node
-
-//   2. Load this crud-helper.js module
-//         $ .load crud-helper.js
-
-//   3. When done CRUDing, exit the REPL with:
-//         $ .exit (or ctrl-D, or ctrl-C twice)
-
-// Note that if any changes are made to the
-// models or this module, exit 
-
-
-// If the db connection string is in a .env file,
-// we need to process it just like in server.js
-require('dotenv').config();
-// Connect to the database
-require('./config/database');
-
-// Require the app's Mongoose models
-const Movie = require('./models/movie');
-const Performer = require('./models/performer');
-
-// Define Variables to Hold Documents
-let movie, movies;
-let performer, performers;
-
-
-// Example CRUD
-
-// console.log all movie documents
-// Preview of promise syntax - coming SOON!
-Movie.find({}).then(console.log);
-
-console.log('Time to CRUD!');
-
+// A movie document stored
+// in the movies collection
+{
+  nowShowing: false,
+  _id: new ObjectId("633e094fa9ba1e2600e6c9f6"),
+  title: 'Star Wars - A New Hope',
+  releaseYear: 1977,
+  cast: ['Mark Hamill', 'Carrie Fisher'],
+  createdAt: 2021-10-05T22:46:39.860Z,
+  updatedAt: 2021-10-05T22:46:39.860Z,
+  __v: 0
+}
+```
+and its reviews might look something like this:
+```js
+// A review document stored
+// in the reviews collection
+{
+  _id: new Object("605d17435dc2532a429a17d0"),
+  // Store/reference the ObjectId
+  // of the movie doc that it belongs to
+  movie: new ObjectId("633e094fa9ba1e2600e6c9f6"),
+  content: 'Still my favorite!',
+  rating: 5,
+  createdAt: 2022-11-03T13:00:44.130Z,
+  updatedAt: 2022-11-03T13:00:44.130Z,
+}
+// Another review document
+{
+  _id: new Object("605d17435dc2532a429a17d0"),
+  movie: new ObjectId("633e094fa9ba1e2600e6c9f6"),
+  content: 'Entertaining...',
+  rating: 4,
+  createdAt: 2022-04-01T11:20:44.130Z,
+  updatedAt: 2022-04-01T11:20:44.130Z,
+}
 ```
 
-Cool, let's follow the instructions included in **crud-helper.js** to load it.
+Note above how each review document has a `movie` property that holds the `ObjectId` of the movie document that it "belongs to".
 
-Now we can run the Mongoose code that will update the `cast` property of all movie documents to an empty array:
+When using referencing, typically the two types of documents, in this case review and movie documents, are stored in separate collections using separate models.
+
+Because only a single collection can be queried at a time, referencing requires two separate database queries to access both a movie and its reviews.
+
+This is the reason _embedding_ is considerably more efficient...
+
+#### Embedding Reviews
+
+In MongoDB/Mongoose, one-to-many relationships can be implemented using **embedding**.
+
+Embedding is when a child subdocument (review) is  **embedded** within its parent document (movie).
+
+For example:
 
 ```js
-Movie.updateMany(
-  {},  // Query object determines which docs to update
-  {cast: []},  // Update object has properties to update
-  function(err, result) {console.log(result)}
-);
+{
+  nowShowing: false,
+  _id: new ObjectId("633e094fa9ba1e2600e6c9f6"),
+  title: 'Star Wars - A New Hope',
+  releaseYear: 1977,
+  cast: ['Mark Hamill', 'Carrie Fisher'],
+  reviews: [
+    {
+      _id: new Object("605d17435dc2532a429a17d0"),
+      content: 'Still my favorite!',
+      rating: 5,
+      createdAt: 2022-11-03T13:00:44.130Z,
+      updatedAt: 2022-11-03T13:00:44.130Z,
+    },
+    {
+      _id: new Object("605d17435dc2532a429a17d0"),
+      content: 'Entertaining...',
+      rating: 4,
+      createdAt: 2022-04-01T11:20:44.130Z,
+      updatedAt: 2022-04-01T11:20:44.130Z,
+    },
+  ],
+  createdAt: 2021-10-05T22:46:39.860Z,
+  updatedAt: 2021-10-05T22:46:39.860Z,
+  __v: 0
+}
 ```
 
-Nice, now we will be able to refactor the movieSchema later without causing any errors.
+This `Movie --< Review` relationship is a perfect use case for using MongoDB/Mongoose embedding!
 
-## 4. Compute the _Average Rating_ of the Reviews
+### ERD for `mongoose-movies`
 
-The demo of the completed mongoose-movies app computed and displayed an _average rating_ for reviews in the movie's detail page:
+Here's what an ERD that models the<br>`Movie --< Review`<br>relationship might look like:
 
-<img src="https://i.imgur.com/CoFuOOW.png">
-	
-All it takes is adding some EJS to **views/movies/show.ejs** :
+<img src="https://i.imgur.com/NqDxv0G.png">
 
-```html
-<tbody>
-  <!-- Yep, we can define variables! -->
-  <% let total = 0 %>
-  <% movie.reviews.forEach(function(r) { %>
-    <!-- Accumulate the total rating -->
-    <% total += r.rating %>
-    <tr>
-      <td><%= r.createdAt.toLocaleDateString() %></td>
-      <td><%= r.content %></td>
-      <td><%= r.rating %></td>
-    </tr>
-  <% }); %>
-  <!-- Add a row to display the avg AFTER the forEach iteration  -->
-  <tr>
-    <td colspan="2"></td>
-    <td><strong><%= (total / movie.reviews.length).toFixed(1) %></strong></td>
-  </tr>
-</tbody>
+## Subdocuments
+
+When we embed related data, we refer to that embedded data as a **subdocument**.
+
+Subdocuments are very similar to regular documents.
+
+The key difference being that they themselves are not saved directly to the database - they are saved when the document they are embedded within is saved.
+
+Subdocuments still require that a **schema** be defined so that the data can be validated and/or the application can depend upon the "shape" of its data.
+
+However, because subdocuments are not saved to their own collection, **there is no model**, just a schema!
+
+## 5. Define a Schema for Review Subdocuments
+
+Okay, so we need to define a `reviewSchema`.
+
+Only the `movieSchema` code needs to reference `reviewSchema`, so a great place to define it is just above the `movieSchema` in **models/movie.js**:
+
+```js
+const reviewSchema = new Schema({
+  content: {
+    type: String,
+    required: true
+  },
+  rating: {
+    type: Number,
+    min: 1,
+    max: 5,
+    default: 5
+  }
+}, {
+  timestamps: true
+});
+
+const movieSchema = new Schema({
 ```
 
-Although we just used the amazing power of EJS, typically it's the controller's responsibility to gather/compute data and pass it to views to be rendered.
+With `reviewSchema` defined, we can now use it within the `movieSchema` as follows:
+
+```js
+const movieSchema = new Schema({
+  ...
+  nowShowing: { type: Boolean, default: false },
+  // reviews is an array of review subdocs!
+  reviews: [reviewSchema]
+}, {
+  timestamps: true
+});
+```
 
 <details>
 <summary>
@@ -196,7 +236,393 @@ Although we just used the amazing power of EJS, typically it's the controller's 
 </summary>
 <hr>
 
-<code>git reset --hard origin/sync-12-avg-rating</code>
+**`git reset --hard origin/sync-8-review-schema`**
 
 <hr>
 </details>
+
+## 6. Creating Reviews
+
+Here's the User Story:
+
+_**AAU, when viewing the detail page for a movie, I want to see a form for adding a new review**_
+
+Since we will be displaying the form for creating a new review on each movie's detail page (**show.ejs**), we won't need to implement `new` functionality for the reviews resource, thus:
+
+- No route in `routes/reviews.js` for showing a page with a form.
+- No `new` controller action in `controllers/reviews.js`
+- No `views/reviews/new.ejs` template. In fact, in mongoose-movies, there's no need to even create a `views/reviews` folder.
+
+Cool, so there's no `new` functionality code for reviews, but we certainly need to implement the `create` functionality.
+
+Let's get coding!
+
+### Step 1 - Determine the Proper Route
+
+Routing for a related/nested resource can be a bit different because, in some cases, we need to "inform" the server of the nested resource's parent resource.
+
+Let's review the [Routing for Nested Resources section of our Routing Guide](https://gist.github.com/jim-clark/17908763db7bd3c403e6#routing-for-nested-resources-onemany--manymany-relationships).
+
+Using the chart, we find that the proper route for creating a review is:
+
+```
+POST /movies/:id/reviews
+```
+
+Note how the path of the route will provide the server with the `_id` of the movie that the review is being created for!
+
+### Step 2 - Create the UI that Sends the Request
+
+<details>
+<summary>
+❓ What UI did we use to create a To Do?
+</summary>
+<hr>
+
+**A `<form>` element**
+
+<hr>
+</details>
+
+Cool, so let's add the form to **movies/show.ejs** right under the current `</section>` tag:
+
+```html
+</section>
+<!-- new markup below -->
+<br><br><h2>Reviews</h2>
+<form id="add-review-form" method="POST"
+  action="/movies/<%= movie._id %>/reviews">
+  <label>Review:</label>
+  <textarea name="content"></textarea>
+  <label>Rating:</label>
+  <select name="rating">
+    <option value="1">1</option>
+    <option value="2">2</option>
+    <option value="3">3</option>
+    <option value="4">4</option>
+    <option value="5" selected>5</option>
+  </select>
+  <input type="submit" value="Add Review">
+</form>
+```
+
+Nothing new above, but be sure to review how the value for the `action` is being written.  
+
+A touch of styling. **Update** this existing CSS rule on line 69 of **public/stylesheets/style.css**:
+
+```css
+#new-form *, #add-review-form * {
+  ...
+}
+```
+
+and **add** this new CSS to the bottom:
+
+```css
+#add-review-form {
+  display: grid;
+  grid-template-columns: auto auto;
+  gap: 1rem;
+}
+
+#add-review-form input[type="submit"] {
+  width: 8rem;
+  grid-column: 2 / 3;
+  margin-bottom: 2rem;
+}
+```
+
+Browse to the "details" of a movie.
+
+Yeah, not exactly gorgeous but the form's `action` attribute looks pretty sweet!
+
+<img src="https://i.imgur.com/2ntk5sA.png">
+
+### Step 3 - Define the Route on the Server
+
+As a best practice, let's create a dedicated router module for the reviews resource:
+
+```
+touch routes/reviews.js
+```
+
+and start with the typical router boilerplate:
+
+```js
+const express = require('express');
+const router = express.Router();
+// You Do - Require the yet to be created reviews controller 
+
+
+// You Do - Define the Route below
+
+
+module.exports = router;
+```
+
+**👉 You Do - Finish the Router Code Above <small>(1 min)</small>** 
+
+1. Require the reviews controller (yet to be created).
+
+2. Define the route we just identified for creating a review.
+
+<hr>
+
+Now let's require the new router in **server.js**:
+
+```js
+const moviesRouter = require('./routes/movies');
+// new reviews router
+const reviewsRouter = require('./routes/reviews');
+```
+
+Before we mount the new router in **server.js**, let's take another look at the paths in [Routing for Nested Resources section of our Routing Guide](https://gist.github.com/jim-clark/17908763db7bd3c403e6#routing-for-nested-resources-onemany--manymany-relationships).
+
+Notice how some paths need to start with the parent resource (`posts`) and others with the nested resource `comments`?
+
+Because the "starts with" path varies, we won't be able to mount the reviews router in **server.js** to any particular path.
+
+Instead, to achieve the flexibility we need, we have to mount to a starts with path of `/`:
+
+```js
+app.use('/movies', moviesRouter);
+// Mount the reviews router to root because not all 
+// paths for a nested resource begin the same
+app.use('/', reviewsRouter);
+```
+
+As you know, the server won't be happy until we create and export that `create` action from the controller...
+
+### Step 4 - Create and Code the Controller Action
+
+Let's create the controller module:
+
+```
+touch controllers/reviews.js
+```
+
+Open the new **controllers/reviews.js** and let the coding commence:
+
+```js
+const Movie = require('../models/movie');
+
+module.exports = {
+  create
+};
+```
+	
+Note that although we don't have a `Review` model thanks to using embedding, we will certainly need to require the `Movie` model because we will need it to read and update the movie document that we're adding a review to.
+
+Let's write the `create` function:
+	
+```js
+async function create(req, res) {
+  const movie = await Movie.findById(req.params.id);
+  // We can push (or unshift) subdocs into Mongoose arrays
+  movie.reviews.push(req.body);
+  try {
+    // Save any changes made to the movie doc
+    await movie.save();
+  } catch (err) {
+    console.log(err);
+  }
+  // Step 5:  Respond to the Request (redirect if data has been changed)
+  res.redirect(`/movies/${movie._id}`);
+}
+```
+
+Yes, we simply push in an object that's compatible with the embedded document's schema, call `save` on the parent doc, and redirect to wherever makes sense for the app.
+
+Before we start adding reviews, let's update the **show.ejs** template to render a movie's reviews...
+
+<details>
+<summary>
+👀 Do you need to sync your code?
+</summary>
+<hr>
+
+**`git reset --hard origin/sync-9-create-review`**
+
+<hr>
+</details>
+
+## 7. Displaying Reviews
+
+Here's the User Story:
+
+_**AAU, when viewing the detail page for a movie, I want to see a list of the movie's reviews**_
+
+### Displaying a Movie's Reviews
+
+All that's left is to update **movies/show.ejs** to render the movie's reviews.
+
+The only thing new below is the use of a `if..else` to render differently if there's no reviews yet.
+
+Let's stub up that `if..else` so that we get some practice using EJS:
+
+```html
+<!-- views/movies/show.ejs -->
+
+...
+
+</form>
+
+<!-- New markup below -->
+
+<% if (movie.reviews.length) { %>
+
+<% } else { %>
+
+<% } %>
+```
+
+There's nothing new between the `if..else`, so let's copy/paste it:
+
+```html
+</form>
+
+<!-- New markup below -->
+
+<% if (movie.reviews.length) { %>
+  <table>
+    <thead>
+      <tr>
+        <th>Date</th>
+        <th>Review</th>
+        <th>Rating</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% movie.reviews.forEach(function(r) { %>
+        <tr>
+          <!-- .toLocaleDateString() provides a more friendly date format -->
+          <td><%= r.createdAt.toLocaleDateString() %></td>
+          <td><%= r.content %></td>
+          <td><%= r.rating %></td>
+        </tr>
+      <% }); %>
+    </tbody>
+  </table>
+<% } else { %>
+  <h5>No Reviews Yet</h5>
+<% } %>
+```
+
+Note how we access the reviews array using `movie.reviews`.
+
+### Try Adding Reviews!
+
+Assuming no typos, you should be able to add reviews - congrats!
+
+<img src="https://i.imgur.com/WC9oQVf.png">
+
+Let's wrap up with some essential questions before you start on the lab to practice this stuff!
+
+Also, don't forget to check out the<br>_Further Study_ section which shows you how to:
+
+- Retrieve a subdocument embedded in a Mongoose array
+- Remove a subdocument from a Mongoose array, and
+- Query for a document that contains a certain subdocument!
+
+<details>
+<summary>
+👀 Do you need to sync your code?
+</summary>
+<hr>
+
+**`git reset --hard origin/sync-10-finish-embedding`**
+
+<hr>
+</details>
+
+## 8. ❓ Essential Questions
+
+<details>
+<summary>
+(1) True or False: All schemas must be compiled into a Model.
+</summary>
+<hr>
+
+**False**.  We just used `reviewSchema` for the purpose of embedding reviews, however, we never compiled it into a model.
+
+<hr>
+</details>
+
+<details>
+<summary>
+(2) Is it more efficient to embed or reference related data?
+</summary>
+<hr>
+
+**Embed** because we can retrieve a document and its related data in a single query.
+
+<hr>
+</details>
+
+<details>
+<summary>
+(3) True or False: An embedded subdocument must have its <code>save()</code> method called to be persisted to the database.
+</summary>
+<hr>
+
+**False**.  Tricky question because embedded subdocs are saved when the top-level document they are embedded within is saved.
+
+<hr>
+</details>
+
+## 9. Further Study
+
+#### Retrieve a Subdocument from a Mongoose Array
+
+Mongoose arrays have an `id()` method used to find a subdocument based on the subdoc's `_id`:
+
+```js
+// Assume reviewId is an ObjectId or its string representation
+const reviewDoc = movieDoc.reviews.id(reviewId);
+```
+
+> Note that `reviewId` would represent the `_id` of the embedded _review_ subdoc, not the _movie_ doc.
+
+#### Remove a Subdocument from a Mongoose Array
+
+Mongoose arrays have a `remove()` method that can be used to remove subdocuments by their `_id`:
+
+```js
+movieDoc.reviews.remove(reviewId);
+```
+
+Subdocuments themselves use their `deleteOne()` method to remove them from the array:
+
+```js
+// Remove the embedded review subdoc that has an `_id` equal to `reviewId`
+movieDoc.reviews.id(reviewId).deleteOne();
+// Don't forget to save `movieDoc` to persist the deletion!
+```
+
+#### Query for a Document that Contains a Certain Subdocument
+
+There's an amazing syntax that you can use to query documents based upon the properties of subdocs.
+
+```js
+// Find the movie that contains a certain review
+const movie = await Movie.findOne({ 'reviews._id': req.params.reviewId });
+  // Wow, `movie` will be the doc that contains the review with an `_id`
+  // that equals that of the `req.params.reviewId` route parameter!
+```
+
+> Note that the **dot property syntax** must be enclosed in quotes.
+
+For another example, let's say you wanted to find all movies with at least one review with a 5 rating:
+
+```js
+const highlyRatedMovies = await Movie.find({ 'reviews.rating': 5 });
+console.log('Great Movies:', highlyRatedMovies);  // wow!
+```
+
+`reviews.rating` represents the `rating` property on the subdocs withing the `reviews` array!
+
+## References
+
+- [MongooseJS Docs - Subdocuments](https://mongoosejs.com/docs/subdocs.html)
+
+
