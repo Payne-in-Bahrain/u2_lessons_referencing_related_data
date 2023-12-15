@@ -418,16 +418,20 @@ We'll review the code while we type:
 ```html
 <!-- movies/show.ejs -->
 
-  <div><%= movie.nowShowing ? 'Yes' : 'Nope' %></div>
-  <!-- start cast list -->
-  <div>Cast:</div>
-  <ul>
-    <%- movie.cast.map(p => 
-      `<li>${p.name} <small>${p.born.toLocaleDateString()}</small></li>`
-    ).join('') %>
-  </ul>
-  <!-- end cast list -->
-</section>
+<div><%= movie.nowShowing ? 'Yes' : 'Nope' %></div>
+<!-- start cast list -->
+<div>Cast:</div>
+<ul>
+  <%= movie.cast.map(renderCastMember).join('') %>
+</ul>
+<!-- end cast list -->
+
+<% function renderCastMember(castMember) { %>
+  <li>
+    <%= castMember.name %> 
+    <small><%= castMember.born.toLocaleDateString() %></small>
+  </li>
+<% } %>
 ```
 
 > 👀 The raw output EJS tag (`<%-`) avoids the HTML tags from being escaped resulting in them displaying as text.
