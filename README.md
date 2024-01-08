@@ -126,6 +126,12 @@ async function clearCastArrays() {
 clearCastArrays();
 ```
 
+We'll then run the CRUD helper with the following command:
+
+```
+node crud-helper.js 
+```
+
 ## 4. Compute the _Average Rating_ of the Reviews
 
 The demo of the completed mongoose-movies app computed and displayed an _average rating_ for reviews in the movie's detail page:
