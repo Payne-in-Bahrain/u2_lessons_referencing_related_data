@@ -102,21 +102,7 @@ Copy/paste the following code with comments:
 
 // Used to perform CRUD external to the application
 
-// To use (don't type the $'s):
-//   1. Open a Node REPL in Terminal:
-//         $ node
-
-//   2. Load this crud-helper.js module
-//         $ .load crud-helper.js
-
-//   3. When done CRUDing, exit the REPL with:
-//         $ .exit (or ctrl-D, or ctrl-C twice)
-
-// If any changes are made to the models, 
-// exit the REPL and reload this module
-
-
-// If the db connection string is in a .env file, we need 
+// If the db connection string is in a .env file, we need
 // to read in those env variables just like in server.js
 require('dotenv').config();
 // Connect to the database
@@ -124,48 +110,21 @@ require('./config/database');
 
 // Require the app's Mongoose models
 const Movie = require('./models/movie');
-const Performer = require('./models/performer');
 
-// Example CRUD
-
-// Top-level await (using await outside of an async function)
-// has been available since Node v14.8
-let movies = await Movie.find({});
-console.log(movies);
-```
-
-Cool, let's follow the instructions included in **crud-helper.js** to load it.
-
-### ❗️ Clear the `cast` Arrays of All Existing Movies
-
-Currently, the `cast` property on the `Movie` model holds an array of strings representing the names of the performers.
-
-In a bit we'll refactor the `cast` array to reference the performer documents' `ObjectId` instead.
-
-An error will occur if the schema specifies a type of `ObjectId` and Mongoose comes across existing strings instead, so let's clear out any strings that might be in the movie documents's `cast` array.
-
-Running the following Mongoose code will update all movie documents' `cast` property to an empty array and log out the results object:
-
-```
-> Movie.updateMany(
-... {},  // Query object determines which docs to update
-... { cast: [] }  // Update object has properties to update
-... ).then(console.log);
-Promise {
-  <pending>,
-  [Symbol(async_id_symbol)]: 879,
-  [Symbol(trigger_async_id_symbol)]: 875
+// Function to clear the cast arrays of all existing movies
+async function clearCastArrays() {
+  try {
+    // Clear the cast arrays of all existing movies
+    const result = await Movie.updateMany({}, { cast: [] });
+    console.log(result);
+  } catch (error) {
+    console.error('Error clearing cast arrays:', error);
+  }
 }
-> {
-  acknowledged: true,
-  modifiedCount: 7,
-  upsertedId: null,
-  upsertedCount: 0,
-  matchedCount: 7
-}
-```
 
-Nice, now we will be able to refactor the movieSchema later without causing any errors.
+// Directly execute the functions
+clearCastArrays();
+```
 
 ## 4. Compute the _Average Rating_ of the Reviews
 
