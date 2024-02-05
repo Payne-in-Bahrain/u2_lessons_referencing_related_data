@@ -55,8 +55,6 @@ The starter code has a few updates from where we left off in the _Mongoose - Emb
 	
 - As you will learn in this lesson, a many-to-many relationship between two data resources such as _movies_ and _performers_, requires that those resources already exist.  Therefore, the functionality to create _performers_ has been implemented to save time. However, rest assured that there is nothing in this code that has not been previously taught - let's checkout the model, router, controller & view.
 
-  > 👀 Practice implementing the code for Performers was an optional exercise previously assigned.
-
 - Be sure to check out the date "fix" required in the `create` action.
 
 - Also, check out how the `newPerformer` controller function to see how we can sort documents.
