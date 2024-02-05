@@ -350,7 +350,7 @@ async function show(req, res) {
 }
 ```
 
-We can populate documents by chaining the `populate` method after any query - even nested `ObjectId`s can be populated.
+We can populate documents by chaining the `populate` method after any query.
 
 <details>
 <summary>
